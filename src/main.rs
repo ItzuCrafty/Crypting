@@ -20,7 +20,21 @@ fn encrypt_data(data: &[u8], password: &str) -> Vec<u8> {
     [salt.to_vec(), nonce.to_vec(), ciphertext].concat()
 }
 
+fn decrypt_data(data: &[u8], password: &str) -> Vec<u8> {
+    let salt = &data[0..16];
+    let nonce = &data[16..28];
+    let ciphertext = &data[28..];
+    let mut key = [0u8; 32];
+    pbkdf2_hmac::<Sha256>(password.as_bytes(), salt, 100_000, &mut key);
+    let key = GenericArray::from_slice(&key);
+    let cipher = Aes256Gcm::new(key);
+    cipher
+        .decrypt(Nonce::from_slice(nonce), ciphertext)
+        .expect("decryption failed")
+}
+
 fn main() {
     let encrypted = encrypt_data(b"Hello, world!", "mysecret");
-    println!("{:?}", &encrypted[..]);
+    let decrypted = decrypt_data(&encrypted[..], "mysecret");
+    println!("{:?}", &decrypted[..]);
 }
